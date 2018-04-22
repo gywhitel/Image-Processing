@@ -40,7 +40,7 @@ sift = cv2.xfeatures2d.SIFT_create(contrastThreshold=contrastT, edgeThreshold=ed
 # kp, des = sift.detectAndCompute(img, None)
 kp = sift.detect(img, None)
 # sqrt(scaling factors)
-scalfact = [1.2 ^ power/2 for power in range(9)]
+scalfact = [1.2 ** power/2 for power in range(9)]
 
 repeatability = []
 for scaleFactor in scalfact:
