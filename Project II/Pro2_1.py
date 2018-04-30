@@ -19,7 +19,8 @@ sift = cv2.xfeatures2d.SIFT_create(contrastThreshold=0.16, edgeThreshold=9)
 
 # store data in an object-class list
 objects = []
-for imgName in glob.glob('F:/KTH/pro2/test/*.jpg'):
+path = 'F:/KTH/pro2/test/*.jpg'
+for imgName in glob.glob(path):
 	img = cv2.imread(imgName)
 	# use regular expression to filter the object index
 	idx = re.search(r'\d', re.split(r'\\', imgName)[1]).group()
