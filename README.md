@@ -12,3 +12,4 @@ This project is basically to implement the algorithm proposed by Josef, Andrew i
   - Traverse images in folders
   - extract the object index by regular expression filter
   - store all the feature in a text file
+- Constract vocabulary tree
