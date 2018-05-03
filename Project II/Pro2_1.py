@@ -8,13 +8,19 @@ import numpy
 from matplotlib import pyplot as plt
 
 
-class object:
+class visualWord(object):
 	'data structure for each object(building)'
 
-	def __init__(self, descriptor, keypoint, index):
+	def __init__(self, descriptor, keypoint, index, name):
 		self.descriptor = descriptor
 		self.keypoint = keypoint
 		self.index = index
+		self.name = name
+
+
+# Tree construction
+
+
 	
 sift = cv2.xfeatures2d.SIFT_create(contrastThreshold=0.16, edgeThreshold=9)
 
@@ -23,44 +29,43 @@ objects = []
 imgPath = 'F:/KTH/pro2/server/*.jpg'
 for imgName in glob.glob(imgPath):
 	img = cv2.imread(imgName)
+
 	# use regular expression to filter the object index
-	idx = re.search(r'\d+', re.split(r'\\', imgName)[1]).group()
+	# no extra space in regular expression
+	idx = re.search(r'\d{1,2}', re.split(r'\\', imgName)[1]).group()
 	kp, des = sift.detectAndCompute(img, None)
-	objects.append(object(descriptor=des, keypoint=kp, index=idx))
+	objects.append(visualWord(descriptor=des, keypoint=kp, index=str(idx).zfill(2), name=imgName))
 
-# ------------------building data structure------------------
-# 50(row = index) x 3( 3 images for each object) list, each element is a descriptor matrix,
-# establish a 4D matrix [
-# [[obj1_1],[obj1_2],[obj1_3]],
-# [[obj2_123],[],[]]
-# ], whose depth is identical to the index
+# 	sort the lists in the order of index
+objects = sorted(objects, key=lambda visualWord: visualWord.index)
 
-rows, columns = 50, 3
-descriptors =  [[0 for i in range(columns)] for j in range(rows)]
+# select the descriptors for the same object into single list, the index of the list = the index of the object - 1
+descriptors = []
+sameObject = []
 index = 1
 for i in range(len(objects)):
-	# index = objects[i].index
-	descriptors[i//3][i%3] = objects[i].descriptor
-
-	# if objects[i].index == index:
-	# 	sameObject.append(objects[i].descriptor)
-	# else:
-	# 	sameObject = []
-	# 	sameObject.append(objects[i].descriptor)
+	if objects[i].index == index:
+		sameObject.append(objects[i].descriptor)
+	else:
+		# when turn to a new object, store the descriptors for the last object in a list
+		descriptors.append([sameObject])
+		sameObject = []
+		sameObject.append(objects[i].descriptor)
+	index = objects[i].index
 
 
 
 # if no such file, establish a new one
 txtPath = 'F:\KTH\pro2\descriptor'
-descriptor = open(txtPath, 'a')
+descriptor = open(txtPath, 'w')
 # for i in range(len(objects)):
 	# pickle.dump([objects[i].descriptor, objects[i].index], descriptor)
 numpy.save(txtPath, descriptors, allow_pickle=True)
 
 
-'''test
 
+'''
 txtPath = 'F:\KTH\pro2\descriptor.npy'
 data = numpy.load(txtPath)
-print(data)
+print(data[0])
 '''
