@@ -100,6 +100,16 @@ It would be without`/afs/kth.se`
 [3]: https://docs.python.org/3/whatsnew/3.0.html
 ### Regular expression
 Use regular expression to extract the index of the object. But it's not necessary now, since I use depth to represent the index
+### Numeric format
+But the image travesal starts from 10 instead of 1. And the index list looks like:
+> 10 -> 19, 1, 20 -> 29, 2, 30 -> 39, 3, 40 -> 49, 4, 50, 5, 6 -> 9
+
+So I need to convert all numbers into 2 digits
+```python
+objects = sorted(objects, key=lambda visualWord: str(visualWord.index),zfill(2)
+```
+
+Need to modify the regualr expression. And sort the list in the order of index.
 ```python
 
 class object:
@@ -118,16 +128,16 @@ imgPath = 'F:/KTH/pro2/server/*.jpg'
 for imgName in glob.glob(imgPath):
 	img = cv2.imread(imgName)
 	# use regular expression to filter the object index
-	idx = re.search(r'\d+', re.split(r'\\', imgName)[1]).group()
+	idx = re.search(r'\d{2}', re.split(r'\\', imgName)[1]).group()
 	kp, des = sift.detectAndCompute(img, None)
 	objects.append(object(descriptor=des, keypoint=kp, index=idx))
 ```
 ### The biggest problem is how to organize the data structure
-We have 50 objects and 3 images for each object. We need to store the descriptor(2D $226\times 128$ Matrix) for each image. And we also need to label or index each object.
+~~We have 50 objects and 3 images for each object. We need to store the descriptor(2D $226\times 128$ Matrix) for each image. And we also need to label or index each object.
 After try a few structures, I built a $50 \times 3 $Lists for the data storage.
 - I've tried to use a $50\times 3$ numpy.array, but the elements cannot be a matrix. That's why I use a list.
 - In this case, the depth (row number) is identical to the index, so I don't have to label them.
-- It's a little tricky to think of the index of the list [int(division)][remainder]
+- It's a little tricky to think of the index of the list [int(division)][remainder]~~
 ```python
 rows, columns = 50, 3
 descriptors = [[0 for i in range(columns)] for j in range(rows)]
@@ -137,7 +147,35 @@ for i in range(len(objects)):
 	descriptors[i // 3][i % 3] = objects[i].descriptor
 
 ```
-  
-  
+This is not universal, only working for the scenario that 3 images for each object.
+I update the algorithm to select the descriptors for the same object into single list, $theindex of the list = the index of the object - 1$
+```python
+descriptors = []
+sameObject = []
+index = 1
+for i in range(len(objects)):
+	if objects[i].index == index:
+		sameObject.append(objects[i].descriptor)
+	else:
+		# when turn to a new object, store the descriptors for the last object in a list
+		descriptors.append([sameObject])
+		sameObject = []
+		sameObject.append(objects[i].descriptor)
+	index = objects[i].index
+```
+
+
+### read and save files
+traverse the whole folder
+```python
+imgPath = 'F:/KTH/pro2/server/*.jpg'
+for imgName in glob.glob(imgPath):
+	img = cv2.imread(imgName)
+```
+save lists into files
+```python
+txtPath = 'F:\KTH\pro2\descriptor'
+descriptor = open(txtPath, 'a')
+```
   
   
