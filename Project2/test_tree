@@ -4,16 +4,31 @@ data = np.random.rand(100, 1) #生成一个随机数据，样本大小为100, �
 
 
 def hikmeans(data, d, depth):
+    '''
+    data: input dataset
+    d: the number of branches
+    depth: the depth of the tree
+    '''
+    
+    '''    
     list = []#建一个个数等于各层所有nodes总和的空列表
     n = depth - 1
     for i in range(depth):
         for k in range(d ** (depth - n)):
+            # depth - n = current layer
             list.append([])
         n = n - 1
+    '''
+    
     estimator = KMeans(n_clusters=d)#对原始数据第一次kmeans
+    # cluster into 4 groups
     estimator.fit(data)
+    centroids = estimator.cluster_centers_
     label_pred = estimator.labels_
+    # the cluster number of each point
 
+# pick out the points in the same cluster
+    list = []
     for j in range(d):#得到第一层各nodes
         for i in range(len(data)):
             if label_pred[i] == j:
