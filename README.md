@@ -6,7 +6,7 @@ We mainly used openCV-Python to do the job. Maybe implement those tasks in Matla
 - Test the robustness after image transformation
 - Feature matching
 ## Project II
-This project is basically to implement the algorithm proposed by Josef, Andrew in ***A Text Retrieval Approach to Object Matching in Videos***
+This project is basically to implement the algorithm proposed by Josef, Andrew in ***A Text Retrieval Approach to Object Matching in Videos***. More details can be found in ***Mobile Visual Search*** by Giord .etc
 
 - Image Feature extraction
   - Traverse images in folders
