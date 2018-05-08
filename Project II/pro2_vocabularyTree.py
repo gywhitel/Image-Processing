@@ -124,4 +124,3 @@ if __name__ == '__main__':
 		pointList = pickle.load(data)
 		tree.addNode(data=pointList, k=branch[0], depth=depth[0])
 
-# pro2_tree.py
