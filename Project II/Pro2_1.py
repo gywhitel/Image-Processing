@@ -1,71 +1,148 @@
+# This file mainly implemented the storage of image features
+
 # from PIL import Image
 import glob
 import cv2
 import re
-# import pickle
+import pickle
 import numpy
 
 from matplotlib import pyplot as plt
 
 
-class visualWord(object):
-	'data structure for each object(building)'
+class objectInfo(object):
+	'data structure for each picture'
 
-	def __init__(self, descriptor, keypoint, index, name):
+	def __init__(self, descriptor, index, name):
 		self.descriptor = descriptor
-		self.keypoint = keypoint
+		# self.keypoint = keypoint
 		self.index = index
 		self.name = name
 
 
-# Tree construction
+class point(object):
+
+	def __init__(self, descriptor, index):
+		self.descriptor = descriptor
+		self.index = index
 
 
+def SIFTdescriptorExtraction(path, constrastThreshold, edgeThreshold):
+	'''
+
+	:param path: the path of the image folder
+	:param constrastThreshold: contrast threshold for the SIFT
+	:param edgeThreshold: edge threshold for the SIFT
+	:return: a list of object information class; a list of (descriptor, index)
+	'''
+
+	sift = cv2.xfeatures2d.SIFT_create(contrastThreshold=constrastThreshold, edgeThreshold=edgeThreshold)
+	objects = []
+	for imgName in glob.glob(path):
+		img = cv2.imread(imgName)
+		# use regular expression to filter the object index
+		# no extra space in regular expression
+		idx = re.search(r'\d{1,2}', re.split(r'\\', imgName)[1]).group()
+		kp, des = sift.detectAndCompute(img, None)
+		objects.append(objectInfo(descriptor=des, index=str(idx).zfill(2), name=imgName))
+
+		# store every descriptor in the form of [descriptor, index]
+	points = []
+	for i in range(len(objects)):
+		for descriptor in objects[i].descriptor:
+			points.append(point(descriptor=descriptor, index=objects[i].index))
+
+	return objects, points
+
+
+def storePoint(path=None, openWay='wb', data=None):
+	# if no such file, establish a new one
+	file = open(path, openWay)          # must store in binary form
+	# store array-like data into a file
+	pickle.dump(data, file, pickle.HIGHEST_PROTOCOL)
+
+
+def pickObjectID(objectInformation):
+	'''
+		Store the ID of objects
+
+	:param objectInformation: objectInfo class
+	:return: a unique list of object IDs
+	'''
+	objID = []
+	for obj in objectInformation:
+		objID.append(obj.index)
+
+	return numpy.unique(objID)
+
+
+def main():
+	''''''
+	'''
+	sift = cv2.xfeatures2d.SIFT_create(contrastThreshold=0.16, edgeThreshold=9)
+
+	# store data in an object-class list
+	objects = []
+	imgPath = 'F:/KTH/pro2/server/*.jpg'
+	for imgName in glob.glob(imgPath):
+		img = cv2.imread(imgName)
+
+		# use regular expression to filter the object index
+		# no extra space in regular expression
+		idx = re.search(r'\d{1,2}', re.split(r'\\', imgName)[1]).group()
+		kp, des = sift.detectAndCompute(img, None)
+		objects.append(objectInfo(descriptor=des, keypoint=kp, index=str(idx).zfill(2), name=imgName))
+	'''
+
+	'''
+	# 	sort the lists in the order of index
+	objects = sorted(objects, key=lambda visualWord: visualWord.index)
 	
-sift = cv2.xfeatures2d.SIFT_create(contrastThreshold=0.16, edgeThreshold=9)
+	# select the descriptors for the same object into single list, the index of the list = the index of the object - 1
+	descriptors = []
+	sameObject = []
+	index = 1
+	for i in range(len(objects)):
+		if objects[i].index == index:
+			sameObject.append(objects[i].descriptor)
+		else:
+			# when turn to a new object, store the descriptors for the last object in a list
+			descriptors.append([sameObject])
+			sameObject = []
+			sameObject.append(objects[i].descriptor)
+		index = objects[i].index
+	'''
 
-# store data in an object-class list
-objects = []
-imgPath = 'F:/KTH/pro2/server/*.jpg'
-for imgName in glob.glob(imgPath):
-	img = cv2.imread(imgName)
 
-	# use regular expression to filter the object index
-	# no extra space in regular expression
-	idx = re.search(r'\d{1,2}', re.split(r'\\', imgName)[1]).group()
-	kp, des = sift.detectAndCompute(img, None)
-	objects.append(visualWord(descriptor=des, keypoint=kp, index=str(idx).zfill(2), name=imgName))
-
-# 	sort the lists in the order of index
-objects = sorted(objects, key=lambda visualWord: visualWord.index)
-
-# select the descriptors for the same object into single list, the index of the list = the index of the object - 1
-descriptors = []
-sameObject = []
-index = 1
-for i in range(len(objects)):
-	if objects[i].index == index:
-		sameObject.append(objects[i].descriptor)
-	else:
-		# when turn to a new object, store the descriptors for the last object in a list
-		descriptors.append([sameObject])
-		sameObject = []
-		sameObject.append(objects[i].descriptor)
-	index = objects[i].index
+	# ------------------------------------  Database Images Info Storage------------------------------
+	imgPath = 'F:/KTH/pro2/server/*.jpg'
+	objectInformation, points = SIFTdescriptorExtraction(path=imgPath, constrastThreshold=0.16, edgeThreshold=9)
 
 
 
-# if no such file, establish a new one
-txtPath = 'F:\KTH\pro2\descriptor'
-descriptor = open(txtPath, 'w')
-# for i in range(len(objects)):
-	# pickle.dump([objects[i].descriptor, objects[i].index], descriptor)
-numpy.save(txtPath, descriptors, allow_pickle=True)
+	path = 'F:\KTH\pro2\databaseID'
+	numpy.save(path, pickObjectID(objectInformation))
 
+	'''
+	databasePath = 'F:\KTH\pro2\descriptorVector.pkl'   # must with pkl suffix
+	storePoint(path=databasePath, data=points)
+	'''
+	# -------------------------------------Query Image Info Storage-----------------------------------
+'''
+	# query image
+	queryPath = 'F:/KTH/pro2/client/*.jpg'
+	objectInformation, queryPoint = SIFTdescriptorExtraction(path=queryPath, constrastThreshold=0.16, edgeThreshold=9)
 
+	queryPointPath = 'F:\KTH\pro2\queryVector'
+	storePoint(queryPointPath, data=queryPoint)
+'''
 
 '''
-txtPath = 'F:\KTH\pro2\descriptor.npy'
-data = numpy.load(txtPath)
-print(data[0])
-'''
+	txtPath = 'F:\KTH\pro2\descriptorVector.pkl'
+	with open(txtPath, 'rb') as data:
+		pointList = pickle.load(data)
+		print(pointList[0])
+	'''
+
+if __name__ == '__main__':
+	main()
