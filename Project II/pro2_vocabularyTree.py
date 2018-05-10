@@ -66,17 +66,21 @@ class Tree(object):
 				parent = self.nodes[0]
 
 				child = [parent.c1, parent.c2, parent.c3, parent.c4, parent.c5]
-				centroid, cluster = kmeans(data, k)
+				centroid, cluster, _ = kmeans(data, k)
 				for i in range(k):
 					child[i] = treeNode(center=centroid[i], data=cluster[i])
 					self.nodes.append(child[i])
-				self.nodes.pop(0)
+				self.nodes.pop(0)   # stack
+				# all elements in nodes are leaf nodes
+				if len(self.nodes) == k**(currentDepth+1):
+					currentDepth = currentDepth + 1
 				currentTree = Tree(root=self.root, nodes=self.nodes)
-				currentTree.addNode(data=self.nodes[0].data, k=k, depth=depth, currentDepth=currentDepth+1)
-
+				currentTree.addNode(data=self.nodes[0].data, k=k, depth=depth, currentDepth=currentDepth)
 
 		else:
-			return print('Construction complete')
+			print('Construction complete')
+
+		return self.nodes
 
 
 def kmeans(data, k):
@@ -111,16 +115,145 @@ def kmeans(data, k):
 				singleCluster.append(data[i])
 		childrenCluster.append(singleCluster)
 
-	return centroids, childrenCluster
+	return centroids, childrenCluster, classifier
 
 
-if __name__ == '__main__':
-	depth = [3, 5, 7]
-	branch = [4, 5]
+def decribePoint(data):
+	'''
+
+	:param data: input should be :point: class
+	:return: a list of descriptor vector
+	'''
+	desVector = numpy.ndarray(shape=(len(data), 128))
+	for i in range(len(data)):
+		desVector[i] = numpy.array(data[i].descriptor)
+	return desVector
+
+
+def scoreRank(leafNode=None, idf=None, visualWord_object=None, queryDescriptorNumber=None, sumQuery=None, sumIDF=None):
+	'''
+	:param leafNode: the leaf nodes of the vocabulary tree, that is visual word
+	:param idf: inversed document frequency
+	:param visualWord_object: a list of objects in all visual word[[visual word1[objects]],[vw2[obj]]
+	:param queryDescriptorNumber: list(query descriptor number in each visual word)
+	:param sumQuery:list(the sum of query descriptors in visual word)
+	:param sumIDF: the IDF for each visual word
+	:return: a list of score for all objects in single query
+	'''
+	objScore = [] # 50 objects' scores
+	for obj in range(50):
+		score = 0
+		for vw in range(len(leafNode)):
+			score = score + (idf[vw]**2 * visualWord_object[vw][obj] * queryDescriptorNumber]) / (sumIDF * sumQuery)
+		objScore.append(score)
+	return objScore
+
+
+def main():
+
+# --------------------------------parameter setting------------------------------------------
+
+	depthBank = [3, 5, 7]
+	branchBank = [4, 5]
+	depth = depthBank[0]
+	branch = branchBank[0]
+
+# -------------------------------- Vocabulary tree construction ----------------------------------
+
 	# need to import class defined in other files
 	tree = Tree()
 	txtPath = 'F:\KTH\pro2\descriptorVector.pkl'
 	with open(txtPath, 'rb') as data:
 		pointList = pickle.load(data)
-		tree.addNode(data=pointList, k=branch[0], depth=depth[0])
 
+		# The function below is the hi_keams function in the task
+		leafNode = tree.addNode(data=pointList, k=branch, depth=depth)
+
+	# read query data
+	queryPointPath = 'F:\KTH\pro2\queryVector'
+	with open(queryPointPath, 'rb') as data:
+		queryPoint = pickle.load(data)
+
+# -------------------------------- Query retrieval --------------------------------
+
+	# build a classifier based on the leaf nodes' center for query
+	# Actually, what I do here is recluster all the leaf nodes for convenience.
+	# The centers are different from the leafNode center.
+	leafCenters = []
+	for node in leafNode:
+		leafCenters.append(numpy.array(node.center))
+	_, _, leafClassifier = kmeans(data=pointList, k=branch**depth)
+	leafClassifier.cluster_centers_ = numpy.array(leafCenters)
+
+# 	calculate the number of descriptors from the same object in a visual word (leaf Node)
+
+	# extract the objects ID
+	objID = numpy.load('F:\KTH\pro2\databaseID.npy')
+
+	# ------------------------------ Factors in score computation -------------------------
+# vwObj =
+	# 	[
+	# 	 [visual word 1],
+	# 	 [visual word 2],
+	# 	 ...
+	# 	]
+
+# objinVisualWord =
+# [
+	# [points from obj1],
+	# [points from obj2,
+	# ...
+# ]
+	vwObj = [] # store data in all visual word
+	idf = []
+	for visualWord in leafNode:
+		objinVisualWord = []
+		for i in objID:  # object ID
+			sameObject = []
+			for points in visualWord:
+				if points.index == i: # str
+					sameObject.append(points)  # point from the same object
+			objinVisualWord.append(sameObject) # obj 01->50
+		vwObj.append(objinVisualWord)  # -> C
+		idf.append(numpy.log(50 / len(objinVisualWord))) # number of occurence
+
+
+# 	array([array([]),array([])])
+# 	input a query per iteration
+	for singleQuery in queryPoint:
+
+		queryClusterIndex = leafClassifier.predict(decribePoint(singleQuery))
+		sumQuery = len(numpy.unique(queryClusterIndex)) #sigma_QuertImage
+
+		# pick out queries in the same leaf node(visual word) in a list
+		sameClusterQuery = []
+		for j in range(len(leafNode)): # every visual word
+			currentClusterQuery = []
+			for i in range(len(queryClusterIndex)):
+				if queryClusterIndex[i] == j:
+					currentClusterQuery.append(i)    # the index of query descriptors in the same visual word
+			sameClusterQuery.append(currentClusterQuery) # only index of the query
+
+		# for single visual word (vw)
+		queryDesNum = []  # -> q: the number of descriptors visiting this visual word
+		for visualWord in sameClusterQuery:
+			queryDesNum.append(len(visualWord))
+
+
+	# ----------------------- Score computation -----------------------------
+		sumIDF = numpy.sum(idf)
+		singleQueryAllObjectScore = scoreRank(idf=idf, visualWord_object=vwObj,
+		                                      queryDescriptorNumber=queryDesNum, sumQuery=sumQuery, sumIDF=sumIDF)
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+	# from pro2_1 import point
+	main()
