@@ -6,6 +6,20 @@ import pdb
 from sklearn.cluster import KMeans
 from pro2_1 import point
 
+
+class rankObject(object):
+	def __init__(self, id=None, score=None):
+		self.id = id
+		self.score = score
+
+
+class queryDescriptorClassify(object):
+	def __init__(self, descriptor=None, center=None, distance=None, centerID=None):
+		self.descriptor = descriptor
+		self.center = center
+		self.distance = distance
+		self.centerID = centerID
+
 # the problem is each node stores the informatin belonging to its child. The centre info
 # of each node should be the center of itself. c1->5 are like pointer to their child.
 class treeNode(object):
@@ -121,16 +135,16 @@ def kmeans(data, k):
 def decribePoint(data):
 	'''
 
-	:param data: input should be :point: class
+	:param data: input should be :point(class)
 	:return: a list of descriptor vector
 	'''
-	desVector = numpy.ndarray(shape=(len(data), 128))
-	for i in range(len(data)):
-		desVector[i] = numpy.array(data[i].descriptor)
+	desVector = numpy.ndarray(shape=(len(data.descriptor), 128))
+	for i in range(len(data.descriptor)):
+		desVector[i] = numpy.array(data.descriptor[i])
 	return desVector
 
 
-def scoreRank(leafNode=None, idf=None, visualWord_object=None, queryDescriptorNumber=None, sumQuery=None, sumIDF=None):
+def objScoreperQuery(leafNode=None, idf=None, visualWord_object=None, queryDescriptorNumber=None, sumQuery=None, sumIDF=None):
 	'''
 	:param leafNode: the leaf nodes of the vocabulary tree, that is visual word
 	:param idf: inversed document frequency
@@ -144,17 +158,58 @@ def scoreRank(leafNode=None, idf=None, visualWord_object=None, queryDescriptorNu
 	for obj in range(50):
 		score = 0
 		for vw in range(len(leafNode)):
-			score = score + (idf[vw]**2 * visualWord_object[vw][obj] * queryDescriptorNumber]) / (sumIDF * sumQuery)
+			# pdb.set_trace()
+			score = score + (idf[vw]**2 * len(visualWord_object[vw][obj]) * queryDescriptorNumber[vw]) / (sumIDF*sumQuery)
 		objScore.append(score)
 	return objScore
+
+
+# TODO: Might be the problem
+def recallEvaluation(rankObject, top, queryID):
+	'''
+
+	:param rankObject: a list query scores in rankObject class (objectID; score of this object)
+	:param top: return No 1. -> No top
+	:param queryID:
+	:return: if match return 1, otherwise
+	'''
+	rankList = sorted(rankObject, key=lambda rankObject:rankObject.score, reverse=True)
+	if top < len(rankList):
+		topList = rankList[:top]
+		for match in topList:
+			if match.id == queryID:  # queryID ?
+				return 1
+			else:
+				return 0
+
+
+def queryCluster(queryDescriptors, centers):
+	'''
+
+	:param queryDescriptors: a list of descriptors from single query
+	:param centers: list(center of leaf nodes), the index is the cluster number
+	:return: a class
+	'''
+	queryDesClass = []
+	for queryDes in decribePoint(queryDescriptors):
+		destoAllcenter = []
+		for i in range(len(centers)):
+			destoAllcenter.append(queryDescriptorClassify(descriptor=queryDes, center=centers[i],
+			                                            distance=numpy.linalg.norm(queryDes - centers[i]), centerID=i))
+
+		queryDesClass.append(sorted(destoAllcenter,
+		                            key=lambda queryDescriptorClassify: queryDescriptorClassify.distance)[0])
+	# 	the class name before and after : must be the same
+
+	return queryDesClass
 
 
 def main():
 
 # --------------------------------parameter setting------------------------------------------
 
-	depthBank = [3, 5, 7]
-	branchBank = [4, 5]
+	depthBank = [3, 5, 7, 2]
+	branchBank = [4, 5, 2]
 	depth = depthBank[0]
 	branch = branchBank[0]
 
@@ -173,7 +228,7 @@ def main():
 	queryPointPath = 'F:\KTH\pro2\queryVector'
 	with open(queryPointPath, 'rb') as data:
 		queryPoint = pickle.load(data)
-
+		queryPoint = sorted(queryPoint, key=lambda point:point.index)
 # -------------------------------- Query retrieval --------------------------------
 
 	# build a classifier based on the leaf nodes' center for query
@@ -182,8 +237,9 @@ def main():
 	leafCenters = []
 	for node in leafNode:
 		leafCenters.append(numpy.array(node.center))
-	_, _, leafClassifier = kmeans(data=pointList, k=branch**depth)
-	leafClassifier.cluster_centers_ = numpy.array(leafCenters)
+
+	# _, _, leafClassifier = kmeans(data=pointList, k=branch**depth)
+	# leafClassifier.cluster_centers_ = numpy.array(leafCenters)
 
 # 	calculate the number of descriptors from the same object in a visual word (leaf Node)
 
@@ -210,28 +266,36 @@ def main():
 		objinVisualWord = []
 		for i in objID:  # object ID
 			sameObject = []
-			for points in visualWord:
+			for points in visualWord.data:
 				if points.index == i: # str
 					sameObject.append(points)  # point from the same object
 			objinVisualWord.append(sameObject) # obj 01->50
+			# objectinVisualWord = list(filter(None, objinVisualWord))
 		vwObj.append(objinVisualWord)  # -> C
-		idf.append(numpy.log(50 / len(objinVisualWord))) # number of occurence
+		idf.append(numpy.log(50 / len(list(filter(None, objinVisualWord))))) # number of occurence
 
 
 # 	array([array([]),array([])])
+# ------------------------------------ Query retrieval -----------------------TODO
 # 	input a query per iteration
+	allQueryScore = []
+	rankObj = []
 	for singleQuery in queryPoint:
 
-		queryClusterIndex = leafClassifier.predict(decribePoint(singleQuery))
-		sumQuery = len(numpy.unique(queryClusterIndex)) #sigma_QuertImage
+		# singleQuery = queryPoint[0]
+		# predict the which leaf node the query descriptor should belong
+		# queryClusterIndex = leafClassifier.predict(decribePoint(singleQuery))
+		queryResult = queryCluster(singleQuery, leafCenters)
+		queryClusterIndex = [queryDes.centerID for queryDes in queryResult]
+		sumQuery = len(numpy.unique(queryClusterIndex)) # sigma_QuertImage
 
 		# pick out queries in the same leaf node(visual word) in a list
 		sameClusterQuery = []
 		for j in range(len(leafNode)): # every visual word
 			currentClusterQuery = []
-			for i in range(len(queryClusterIndex)):
-				if queryClusterIndex[i] == j:
-					currentClusterQuery.append(i)    # the index of query descriptors in the same visual word
+			for queryDes in queryResult:
+				if queryDes.centerID == j:
+					currentClusterQuery.append(queryDes)    # the index of query descriptors in the same visual word
 			sameClusterQuery.append(currentClusterQuery) # only index of the query
 
 		# for single visual word (vw)
@@ -239,21 +303,25 @@ def main():
 		for visualWord in sameClusterQuery:
 			queryDesNum.append(len(visualWord))
 
-
+# TODO database ID
 	# ----------------------- Score computation -----------------------------
 		sumIDF = numpy.sum(idf)
-		singleQueryAllObjectScore = scoreRank(idf=idf, visualWord_object=vwObj,
+		# single query obj 01 -> 50
+		singleQueryAllObjectScore = objScoreperQuery(leafNode=leafNode ,idf=idf, visualWord_object=vwObj,
 		                                      queryDescriptorNumber=queryDesNum, sumQuery=sumQuery, sumIDF=sumIDF)
 
+		objScore = []
+		for i in range(len(singleQueryAllObjectScore)):
+			objScore.append(rankObject(id=str(i+1).zfill(2), score=singleQueryAllObjectScore[i])) # transform scores of objects each query
+		# into rankObject class
 
+		allQueryScore.append(singleQueryAllObjectScore)
+		rankObj.append(recallEvaluation(objScore,top=10, queryID=singleQuery.index))
+	# a list of recall value(+:1, -:0)
 
-
-
-
-
-
-
-
+# ------------------------- Recall rate computation ----------------------------------
+	recallRate = numpy.sum(rankObj) / 50
+	print(recallRate)
 if __name__ == '__main__':
 	# from pro2_1 import point
 	main()
