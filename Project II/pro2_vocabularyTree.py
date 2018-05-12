@@ -159,7 +159,10 @@ def objScoreperQuery(leafNode=None, idf=None, visualWord_object=None, queryDescr
 		score = 0
 		for vw in range(len(leafNode)):
 			# pdb.set_trace()
-			score = score + (idf[vw]**2 * len(visualWord_object[vw][obj]) * queryDescriptorNumber[vw]) / (sumIDF*sumQuery)
+			# score = score + (idf[vw]**2 * len(visualWord_object[vw][obj]) * queryDescriptorNumber[vw]) / (sumIDF*sumQuery)
+			score = score + (idf[vw]**2 * len(visualWord_object[vw][obj]) * queryDescriptorNumber[vw])/sumIDF
+			# score = score + (idf[vw] * queryDescriptorNumber[vw])
+
 		objScore.append(score)
 	return objScore
 
@@ -176,11 +179,11 @@ def recallEvaluation(rankObject, top, queryID):
 	rankList = sorted(rankObject, key=lambda rankObject:rankObject.score, reverse=True)
 	if top < len(rankList):
 		topList = rankList[:top]
+		recall = 0
 		for match in topList:
-			if match.id == queryID:  # queryID ?
-				return 1
-			else:
-				return 0
+			if match.id == queryID:  # queryID ? TODO Mistake
+				recall = 1
+		return recall*2
 
 
 def queryCluster(queryDescriptors, centers):
@@ -210,9 +213,9 @@ def main():
 
 	depthBank = [3, 5, 7, 2]
 	branchBank = [4, 5, 2]
-	depth = depthBank[0]
-	branch = branchBank[0]
-
+	depth = depthBank[1]
+	branch = branchBank[1]
+	percemt = 0.9
 # -------------------------------- Vocabulary tree construction ----------------------------------
 
 	# need to import class defined in other files
@@ -272,7 +275,7 @@ def main():
 			objinVisualWord.append(sameObject) # obj 01->50
 			# objectinVisualWord = list(filter(None, objinVisualWord))
 		vwObj.append(objinVisualWord)  # -> C
-		idf.append(numpy.log(50 / len(list(filter(None, objinVisualWord))))) # number of occurence
+		idf.append(numpy.log2(50 / len(list(filter(None, objinVisualWord))))) # number of occurence
 
 
 # 	array([array([]),array([])])
@@ -280,8 +283,9 @@ def main():
 # 	input a query per iteration
 	allQueryScore = []
 	rankObj = []
-	for singleQuery in queryPoint:
-
+	for singleQueryAll in queryPoint:
+		singleQueryDes = singleQueryAll.descriptor[:int(percemt * len(singleQueryAll.descriptor))]
+		singleQuery = point(descriptor=singleQueryDes, index=singleQueryAll.index)
 		# singleQuery = queryPoint[0]
 		# predict the which leaf node the query descriptor should belong
 		# queryClusterIndex = leafClassifier.predict(decribePoint(singleQuery))
@@ -316,7 +320,7 @@ def main():
 		# into rankObject class
 
 		allQueryScore.append(singleQueryAllObjectScore)
-		rankObj.append(recallEvaluation(objScore,top=10, queryID=singleQuery.index))
+		rankObj.append(recallEvaluation(objScore,top=5, queryID=singleQuery.index))
 	# a list of recall value(+:1, -:0)
 
 # ------------------------- Recall rate computation ----------------------------------
