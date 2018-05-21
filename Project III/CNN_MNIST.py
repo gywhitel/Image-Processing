@@ -9,7 +9,7 @@ from __future__ import print_function
 try:
     import keras
 except:
-    !pip install keras
+    pip.main(['install', 'keras'])
     +import keras
 from keras.datasets import mnist
 from keras.models import Sequential
