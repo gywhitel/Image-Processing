@@ -1,0 +1,142 @@
+\documentclass[a4paper]{article}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{Project 3 Digits Recognition using CNNs}
+\author{Yinghao Gao ,   Yue Fang}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+The objective of this project is to investigate the preferred network structures and training
+parameters of convolutional neural networks for recognition of digits.  The project starts
+from  building  and  training  a  two-layer  convolutional  neural  network.   Then  we  modify  several  relevant  parameters  of  the  network
+structure  and  the  training.   Based  on  the  performance,  we  finally  choose  the  preferred
+configuration.\\\\We use the MNIST dataset which comprises 60,000 training examples and 10,000 test
+examples  of  the  handwritten  digits  0
+−
+9  as  training  and  testing  data.   Examples  in  the
+MNIST dataset are formatted as 28
+×
+28 pixel monochrome images. We run the whole dataset on the GPU of Colaboratory, one application of Google Drive.
+
+\section{Build the Default Model}
+Build a two-layer convolutional neural network based on the following configuration:\\
+\\1.  Convolutional layer 1:  Filter size:  5
+×
+5, stride:  1, zero-padding:  2, number of filters:  24
+\\2.  ReLu
+\\3.  Pooling Layer:  Max pooling, filter size:  2
+×
+2, stride:  2
+\\4.  Convolutional layer 2:  Filter size:  3
+×
+3, Stride:  1, zero-padding:  1, number of filters:  48
+\\5.  ReLu
+6.  Pooling Layer:  Max pooling, filter size:  2
+×
+2, stride:  2
+7.  Fully connected layer 1:  Output size:  1024
+\\8.  ReLu
+\\9.  Fully connected layer 2:  Output size:  10
+\\10.  Softmax classifier.\\
+\\Then,  use a built-in weight initialization function for your chosen implementation frame-
+work to initialize the training parameters.  Then use a built-in stochastic gradient descent
+algorithm to train your network based on the following configuration:
+\\Learning rate:  0.001; Size of minibatch:  100; Training epochs:  100.
+ 
+
+\section{Network Structure}
+According to the default settings,the recall rate obtained is 0.9834.
+
+
+\subsection{Number of filters vs. Number of layers}
+Change the default number of filters for convolutional layer 2 to 24 and add a convolutional
+layer 3 with filter size:  3
+×
+3; stride:  1; zero-padding:  1; number of filters:  24, followed by a
+ReLu activation function. The compared results are seen in Table 1. As we can see, the default structure has better performance.
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{l|c}
+Default & Three layers \\\hline
+0.9834 & 0.9822 \\
+
+\end{tabular}
+\caption{\label{tab:widgets}Recall rates under different number of filters and layers}
+\end{table}
+
+
+\subsection{Filter size}
+We proceed based on the preferred configuration from 3.1 and change the filter size of convolutional 1 and 2 to $5\times 5$ and $7\times 7$, with zero padding changed to 2 and 3, respectively. 
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{l|c}
+Default & Larger filter size \\\hline
+0.9834 & 0.9841 \\
+
+\end{tabular}
+\caption{\label{tab:widgets}Recall rates under different filter size}
+\end{table}
+\subsection{Relu vs. Leaky Relu}
+We get better performance by using Relu as activation function than Leaky Relu. Theoretically, Relu activation function turns all negative values into 0, so there would be some dead neurons that won't be activated anymore, while this will not happen when implementing leaky relu. However, in practice, it's not proved that leaky relu is always better than relu.
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{l|c}
+Relu & Leaky Relu \\\hline
+0.9841 & 0.9813 \\
+
+\end{tabular}
+\caption{\label{tab:widgets}Recall rates under different activation function}
+\end{table}
+\subsection{Dropout vs. without Dropout}
+Based on the preferred configuration above, we get better performance without dropout.
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{l|c}
+Dropout & without Dropout \\\hline
+0.9837 & 0.9841 \\
+
+\end{tabular}
+\caption{\label{tab:widgets}Recall rates with and without dropout }
+\end{table}
+
+
+
+\section{Training Parameters}
+
+\subsection{Batch size}
+We can see from the results that better performance is achieved when we choose a relative small batch size.
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{l|c|r}
+Batch size & Recall rate & Time \\\hline
+100 & 0.9841 & 12:34 \\
+200 & 0.9740 & 7:33 \\
+300 & 0.9653 & 5:42 \\
+\end{tabular}
+\caption{\label{tab:widgets}Recall rates under different batch size}
+\end{table}
+
+
+\subsection{Learning rate}
+Based on the preferred configuration above, we change the learning rate to 1, and recall rate obtained is 0.1135. When the learning rate is too large, it might be overstepping and never reach the optimal.
+
+\section{Conclusion}
+As stated above, the best performance we could get is when the filter size of second convolutional layer changed to 7$\times7$, based on the default structure. 
+
+
+\end{document}
